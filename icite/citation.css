@@ -1,0 +1,105 @@
+#citation-display {
+	padding: 10px 5px 5px 5px;
+	background-color: #f0f0f0;
+	margin-bottom: 10px;
+}
+
+#citation-example {
+	padding: 10px 20px;
+	/* font-size: 0.8em; */
+	width: auto;
+}
+
+#citation-example blockquote,
+#citation-display blockquote {
+	padding: 3px 5px 5px 5px;
+	background: #ffffff;
+	margin: 0.5em 10px 0 10px;
+	border: 1px solid #c8ead7;
+	font-style: normal;
+}
+
+#citation-example hr,
+#citation-display hr {
+	border-top: 1px dashed #999;
+	border-bottom: none;
+	color: #ffffff;
+}
+
+#citation-example .fake-aref,
+#citation-display .fake-aref {
+	color: #ff0033;
+	border-bottom: 1px dotted #D0D0D0 !important;
+}
+
+#citation-example .chicago-ellipsis,
+#citation-display .chicago-ellipsis {
+	padding-left: 0.3em;
+	letter-spacing: 0.3em;
+}
+
+#citation-example strong,
+#citation-display strong {
+	font-family: Gotham-Bold;
+}
+
+#citation-example .ref-pad-0-13cm,
+#citation-display .ref-pad-0-13cm {
+	padding-left: 0.13cm;
+	word-wrap: break-word;
+}
+
+#citation-example .ref-indent-1-27cm,
+#citation-display .ref-indent-1-27cm {
+	text-indent: 1.27cm;
+	padding-right: 5px;
+}
+
+#citation-example .ref-hang-indent,
+#citation-display .ref-hang-indent {
+	text-indent: -40px;
+	padding-left: 45px;
+	padding-right: 5px;
+	word-wrap: break-word; /* ensures that long URLs will wrap inside the box */
+}
+
+#citation-example .double-line-spacing,
+#citation-display .double-line-spacing {
+	line-height: 2em;
+}
+
+#citation-example .ref,
+#citation-example .in-text-citation,
+#citation-example .footnotes,
+#citation-display .ref,
+#citation-display .in-text-citation,
+#citation-display .footnotes {
+	padding-left: 5px;
+	padding-right: 5px;
+}
+
+#citation-example .smaller,
+#citation-display .smaller { font-size: 0.9em; }
+
+#citation-example .cite-footer,
+#citation-display .cite-footer {
+	border: 1px solid #c8ead7;
+	padding: 5px;
+	margin-top: 10px;
+	background: #ffffff;
+}
+
+#citation-example .hover,
+#citation-display .hover { cursor: default; }
+#citation-example .hover:hover,
+#citation-display .hover:hover { color: #1e599f; }
+
+#citation-example .italic,
+#citation-display .italic { font-style: italic; }
+
+#citation-description,
+#citation-description-access {
+	margin-bottom: 10px;
+	width: 100%;
+	clear: both;
+}

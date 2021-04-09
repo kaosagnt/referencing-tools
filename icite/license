@@ -1,0 +1,28 @@
+ # iCite - Provides quick access to examples for referencing,
+ #			citation and acknowledgement.
+ #
+ # Author: Ian McWilliam
+ # Institution: Western Sydney University
+ #
+ # This is an adaption of Referen(C)ite from The University of Auckland NZ.
+ #
+ # Licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+ # International License - http://creativecommons.org/licenses/by-nc-sa/4.0/
+ #
+ # The Code is a complete rewrite and only the data from the original
+ # Referen(C)ite is used.
+
+ Parts from Ian McWilliam's PHP security toolkit released under the following Licence.
+
+ # Copyright Ian McWilliam (kaosagnt@gmail.com).
+ # Permission to use, copy, modify, and distribute this software for any
+ # purpose with or without fee is hereby granted, provided that the above
+ # copyright notice and this permission notice appear in all copies.
+ #
+ # THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ # WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ # MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ # ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ # WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
+ # IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ # OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.

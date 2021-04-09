@@ -1,0 +1,742 @@
+<?php
+
+/**
+ * @file
+ * Module file for icite.
+ *
+ * Author: Ian McWilliam
+ *
+ * This is an adaption of Referen(C)ite from The University of Auckland NZ.
+ *
+ * Licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+ * International License - http://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * The Code is a complete rewrite and only the data from the original
+ * Referen(C)ite is used.
+ */
+
+require_once('citation_business_logic.inc');
+require_once('CGI.class.php');
+require_once('security.inc');
+
+function icite_menu() {
+
+	# %PUBLIC%
+	# NAME:*		icite_menu
+	# DESCR:*		Implements hook_menu.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Items associative array of menu item information.
+	# %END_PUBLIC%
+
+	global $citation_base_URL;
+
+	return(
+		array(
+			$citation_base_URL => array(
+				'title' => 'iCite',
+				'description' => t('Referencing Examples'),
+				'type' => MENU_NORMAL_ITEM,
+				# XXX Modify to match the name of the menu you are using.
+				# There is probably a way to determine this with a Drupal API.
+				'menu_name' => 'menu-main-menu---test',
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('icite_form'),
+				'access arguments' => array('access content')
+			),
+			$citation_base_URL . '/full-display' => array(
+				'title' => 'Referencing Examples',
+				'description' => t('Referencing Examples Node Display'),
+				'type' => MENU_CALLBACK,
+				'page callback' => 'icite_full_display',
+				'page arguments' => array(4, 5, 6),
+				'access arguments' => array('access content')
+			),
+			$citation_base_URL . '/popup' => array(
+				#'title' => 'Referencing',
+				'type' => MENU_CALLBACK,
+				'page callback' => 'icite_popup',
+				'page arguments' => array(4, 5),
+				'access arguments' => array('access content')
+			)
+		)
+	);
+}
+
+function icite_form($form, &$form_state) {
+
+	# %PUBLIC%
+	# NAME:*		icite_form
+	# DESCR:*		Implements hook_form. Call back to display an process
+	# :*			the AJAX controlled Citation form selection.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Items associative array of form item information.
+	# %END_PUBLIC%
+
+	# XXX The following fuks forms: at least POST. XXX
+	#$form_state['no_cache'] = true;
+
+	$module_path = drupal_get_path('module', 'icite');
+
+	# If we have a value for the Referencing Style Select from $form_state['values'] we use
+	# this both as the default value for the Referencing Style Select and also as a
+	# parameter to pass to the function that retrieves the options for the
+	# Publication Type Select.
+	$selected_reference_style =
+		isset($form_state['values']['reference_style'])
+			? $form_state['values']['reference_style']
+			: 0;
+
+	$selected_publication_type =
+		isset($form_state['values']['publication_type'])
+			? $form_state['values']['publication_type']
+			: 0;
+
+	$form = array(
+
+		'#method' => 'get',
+
+		# Drupal's AJAX and Form API sux big dogs you know what.
+		# When you turn all the caching options on, during Mysterious
+		# Phases of the moon will cause 'Illegal option Selected' messages to
+		# appear. Ugggggg.......
+		'#validate' => array('_dummy_validator'),
+
+		'#attached' => array(
+			'css' => array($module_path . '/citation.css'),
+			'js' => array($module_path . '/citation.js'),
+		),
+		'citation' => array(
+      		'#type' => 'fieldset',
+      		'#title' => t('Use the drop-down lists below to select the details of your reference.'),
+      		'#collapsible' => false,
+			'#attributes' => array(
+				'class' => array('no-print')
+			),
+
+			# Div for the description.
+			'citation_description_acess' => array(
+				'#type' => 'item',
+				'#prefix' => '<div id="citation-description-access">',
+				'#markup' => '',
+				'#suffix' => '</div>'
+			),
+			# Div for the description.
+			'citation_description' => array(
+				'#type' => 'item',
+				'#prefix' => '<div id="citation-description" class="bold">',
+				'#markup' => check_plain(
+					t(
+						'It is important to first consult your unit learning guide, '
+						. 'lecturer or tutor for the preferred citation style for each '
+						. 'unit you undertake'
+					)
+				),
+				'#suffix' => '</div>'
+			),
+
+			# Form Controls in the fieldset.
+			'reference_style' => array(
+				'#type' => 'select',
+				'#title' => t('1. Select Referencing Style'),
+				'#options' => _icite_obtain_reference_style_options(),
+				'#default_value' => $selected_reference_style,
+
+				# Bind an ajax callback to the change event (which is the default for the
+				# select form type) of the Referencing Style Select. It will replace the Publication
+				# Type Select when rebuilt.
+				'#ajax' => array(
+
+					# When 'event' occurs, Drupal will perform an ajax request in the
+					# background. Usually the default value is sufficient (eg. change for
+					# select elements), but valid values include any jQuery event,
+					# most notably 'mousedown', 'blur', and 'submit'.
+					# 'event' => 'change',
+					'callback' => 'icite_reference_type_callback',
+					'wrapper' => 'reference-style-replace',
+					'effect' => 'fade'
+				)
+			),
+
+			'publication_type' => array(
+				'#type' => 'select',
+				'#title' => t('2. Select Publication Type'),
+
+				# The entire enclosing div created here is replaced when reference_style
+				# is changed.
+				'#prefix' => '<div id="reference-style-replace">',
+				'#suffix' => '</div>',
+
+				# When the form is rebuilt during ajax processing, the $selected variable
+				# will now have the new value and so the options will change.
+				'#options' =>
+					_icite_obtain_publication_type_options($selected_reference_style),
+
+				'#default_value' => $selected_publication_type,
+
+				'#attributes' => array(
+					'class' => array('dasbdb')
+				),
+
+				'#ajax' => array(
+
+					# When 'event' occurs, Drupal will perform an ajax request in the
+					# background. Usually the default value is sufficient (eg. change for
+					# select elements), but valid values include any jQuery event,
+					# most notably 'mousedown', 'blur', and 'submit'.
+					# 'event' => 'change',
+					'callback' => 'icite_publication_type_callback',
+					'wrapper' => 'reference-details-replace',
+					'effect' => 'fade',
+					'method' => 'html'
+				)
+			),
+
+			'reference_details' => array(
+				'#type' => 'select',
+				'#title' => t('3. Select Referencing Details'),
+
+				# The entire enclosing div created here is replaced when publication_type
+				# is changed.
+				'#prefix' => '<div id="reference-details-replace">',
+				'#suffix' => '</div>',
+
+				# When the form is rebuilt during ajax processing, the $selected variable
+				# will now have the new value and so the options will change.
+				'#options' => _icite_obtain_reference_detail_options(
+									$selected_reference_style,
+									$selected_publication_type
+								),
+				'#default_value' => 0,
+					#isset($form_state['values']['reference_details'])
+					#	? $form_state['values']['reference_details']
+					#	: 0,
+
+				'#attributes' => array(
+					'class' => array('dasbdb1')
+				),
+
+				'#ajax' => array(
+
+					# When 'event' occurs, Drupal will perform an ajax request in the
+					# background. Usually the default value is sufficient (eg. change for
+					# select elements), but valid values include any jQuery event,
+					# most notably 'mousedown', 'blur', and 'submit'.
+					# 'event' => 'change',
+					'callback' => 'icite_display_citation_callback',
+					'wrapper' => 'citation-display',
+					'effect' => 'fade',
+					'method' => 'html'
+				)
+			)
+		),
+
+		# Form Elements outside the fieldset.
+		'citation_display' => array(
+			'#type' => 'item',
+			'#prefix' => '<div id="citation-display">',
+			'#suffix' => '</div>'
+		)
+    );
+
+	return($form);
+}
+
+function icite_reference_type_callback($form, &$form_state) {
+
+	# %PUBLIC%
+	# NAME:*		icite_reference_type_callback
+	# DESCR:*		Callback for when a user selects an item from the
+	# :*			reference type select control. The Publication Type
+	# :*			select form element data is returned here.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Items associative array of form citation publication
+	# :*			type elements.
+	# %END_PUBLIC%
+
+	$form['citation']['publication_type']['#value'] = 0;
+
+	return(
+		array(
+			'#validate' => array('_dummy_validator'),
+			'#method' => 'get',
+
+			$form['citation']['publication_type']
+		)
+	);
+}
+
+function icite_publication_type_callback($form, &$form_state) {
+
+	# %PUBLIC%
+	# NAME:*		icite_publication_type_callback
+	# DESCR:*		Callback for when a user selects an item from the
+	# :*			publication type select control. The Reference Details
+	# :*			select form element data is returned here.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Items associative array of form citation reference
+	# :*			details elements.
+	# %END_PUBLIC%
+
+	$form['citation']['reference_details']['#value'] = 0;
+
+	return(
+		array(
+			'#validate' => array('_dummy_validator'),
+			'#method' => 'get',
+
+			$form['citation']['reference_details']
+		)
+	);
+}
+
+function icite_display_citation_callback($form, $form_state) {
+
+	# %PUBLIC%
+	# NAME:*		icite_display_citation_callback
+	# DESCR:*		Callback for returning the HTML display when the user
+	# :*			has selected the require combination of items. Returned
+	# :*			via the AJAX call from the Reference Details Select control.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Items associative array of HTML markup.
+	# :*			details elements.
+	# %END_PUBLIC%
+
+	$CGI_object = new CGI;
+
+	secure_CGI_object(
+		array(
+			'cgi'					=> $CGI_object,
+			'reference_style'		=> array(0, 'int', 'notarray'),
+			'publication_type'		=> array(0, 'int', 'notarray'),
+			'reference_details'		=> array(0, 'int', 'notarray')
+		)
+	);
+
+	$selected_reference_style = $CGI_object->param('reference_style');
+	$selected_publication_type = $CGI_object->param('publication_type');
+	$selected_reference_details = $CGI_object->param('reference_details');
+
+	# Debug
+	#error_log(
+	#	'icite_display_citation_callback -> CGI_object = '
+	#	. Dumper($CGI_object->param())
+	#);
+
+	return(
+		array(
+			'#markup' =>
+				($selected_reference_details)
+				? _obtain_template_markup(
+						false,
+						$selected_reference_style,
+						$selected_publication_type,
+						$selected_reference_details
+					)
+				: ''
+		)
+	);
+}
+
+function icite_full_display(
+	$selected_reference_style = 0,
+	$selected_publication_type = 0,
+	$selected_reference_details = 0
+) {
+
+	# %PUBLIC%
+	# NAME:*		icite_full_display
+	# DESCR:*		Some of the Reference Citations contain links to other
+	# :*			Reference Citation pages. This allows these pages to be loaded
+	# :*			via the Colorbox Node Module.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Items associative array of HTML markup.
+	# :*			details elements.
+	# %END_PUBLIC%
+
+	drupal_add_css(drupal_get_path('module', 'icite') . '/citation.css');
+
+	return(
+		array(
+			'#prefix' => '<div id="citation-example">',
+			'#suffix' => '</div>',
+			'#markup' => _obtain_template_markup(
+				true,
+				$selected_reference_style,
+				$selected_publication_type,
+				$selected_reference_details
+			)
+		)
+	);
+}
+
+function icite_popup($style = 0, $list_display = '') {
+
+	# %PUBLIC%
+	# NAME:*		icite_popup
+	# DESCR:*		Some of the Reference Citations contain links to popup an
+	# :*			example document or example reference section page. This allows
+	# :*			these pages to be loaded via the Colorbox Node Module.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Items associative array of HTML markup.
+	# :*			details elements.
+	# %END_PUBLIC%
+
+	global $citation_directory_names;
+
+	$display = 'Unable to load the requested Referencing Example.';
+
+	$example_style = filter_nasties(
+		$style,
+		'int',
+		0
+	);
+
+	$example_style = filter_nasties(
+		$example_style,
+		'filename_no_extension',
+		''
+	);
+
+	$style_path = isset($citation_directory_names[$example_style])
+				? $citation_directory_names[$example_style]
+				: false;
+
+	if ($style_path) {
+
+		$filename =
+			dirname(__FILE__)
+			. '/templates/'
+			. $style_path
+			. '/'
+			. $style_path . '_example.tmpl';
+
+		$filename_list =
+			dirname(__FILE__)
+			. '/templates/'
+			. $style_path
+			. '/'
+			. $style_path . '_example_list.tmpl';
+
+		# Debug
+		#error_log(
+		#	'cite_display_citation_callback -> $filename = '
+		#	. Dumper($filename)
+		#);
+
+		if ($list_display) {
+
+			$display = file_get_contents($filename_list);
+
+			if (!$display) {
+
+				$display = 'Unable to load the requested Referencing Example.';
+			}
+
+		} else {
+
+			$display = file_get_contents($filename);
+
+			# Debug
+			#error_log(
+			#	'icite_display_citation_callback -> $display = '
+			#	. Dumper($display)
+			#);
+
+			if (!$display) {
+
+				$display = 'Unable to load the requested Referencing Example.';
+
+			} else {
+
+				$display_list = file_get_contents($filename_list);
+
+				if (!$display_list) {
+
+					$display = 'Unable to load the requested Referencing Example.';
+
+				} else {
+
+					$display = $display . $display_list;
+				}
+			}
+		}
+	}
+
+	return(
+		array(
+			'#prefix' => '<div id="citation-example">',
+			'#suffix' => '</div>',
+			'#markup' => $display
+		)
+	);
+}
+
+function _icite_obtain_reference_style_options() {
+
+	# %PRIVATE%
+	# NAME:*		_icite_obtain_reference_style_options
+	# DESCR:*		Return the List of Reference Style Values and Text display
+	# :*			to build the Reference Style Select control from.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Associative array Reference Style Items.
+	# :*			details elements.
+	# %END_PRIVATE%
+
+	global $reference_style;
+
+	# Debug
+	#error_log('$reference_style = ' . Dumper($reference_style));
+
+	return($reference_style);
+}
+
+function _icite_obtain_publication_type_options($selected_reference_style = 0) {
+
+	# %PRIVATE%
+	# NAME:*		_icite_obtain_publication_type_options
+	# DESCR:*		Return the List of Publication Type Values and Text display
+	# :*			to build the Publication Type Select control from.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Associative array Publication Type Items.
+	# :*			details elements.
+	# %END_PRIVATE%
+
+	global $citation_publication_type;
+
+	if (isset($citation_publication_type[$selected_reference_style])) {
+
+		return($citation_publication_type[$selected_reference_style]);
+	}
+
+	# Debug
+	#error_log(
+	#	'_icite_obtain_publication_type_options -> fall through -> $selected_reference_style = '
+	#	. Dumper($selected_reference_style)
+	#);
+
+	return(array());
+}
+
+function _icite_obtain_reference_detail_options(
+	$selected_reference_style = 0,
+	$selected_publication_type = 0
+) {
+
+	# %PRIVATE%
+	# NAME:*		_icite_obtain_reference_detail_options
+	# DESCR:*		Return the List of Reference Details Values and Text display
+	# :*			to build the Reference Details Select control from.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		Associative array Reference Detail Items.
+	# :*			details elements.
+	# %END_PRIVATE%
+
+	global $citation_reference_type;
+	global $reference_publication_limits;
+
+	if ($selected_reference_style == null) {
+
+		$selected_reference_style = 0;
+	}
+
+	if (
+		$selected_reference_style == 0
+		|| $selected_publication_type == null
+		|| $selected_publication_type > $reference_publication_limits[$selected_reference_style]
+	) {
+
+		$selected_publication_type = 0;
+	}
+
+	# Debug
+	#error_log(
+	#	'_icite_obtain_reference_detail_options -> '
+	#	. '$citation_reference_type[' . $selected_reference_style
+	#	. '][' . $selected_publication_type . '] = '
+	#	. Dumper($citation_reference_type[$selected_reference_style][$selected_publication_type])
+	#);
+
+	if (isset($citation_reference_type[$selected_reference_style][$selected_publication_type])) {
+
+		return($citation_reference_type[$selected_reference_style][$selected_publication_type]);
+	}
+
+	# Debug
+	#error_log(
+	#	'_icite_obtain_publication_type_options -> fall through -> $selected_reference_style = '
+	#	. Dumper($selected_reference_style)
+	#);
+	#error_log(
+	#	'_icite_obtain_publication_type_options -> fall through -> $selected_publication_type = '
+	#	. Dumper($selected_publication_type)
+	#);
+
+	return(array());
+}
+
+function _obtain_template_markup(
+	$substitute_header = false,
+	$selected_reference_style = 0,
+	$selected_publication_type = 0,
+	$selected_reference_details = 0
+) {
+
+	# %PRIVATE%
+	# NAME:*		_obtain_template_markup
+	# DESCR:*		Loads the template markup from the file system.
+	# USAGE:*		INTERNAL: Do Not Use.
+	# RETURNS:*		String of HTML markup.
+	# %END_PRIVATE%
+
+	global $reference_style;
+	global $citation_directory_names;
+	global $citation_base_URL;
+	global $base_url;
+	global $base_path;
+
+	$display = 'Unable to load the requested Referencing Example.';
+
+	if (
+		($selected_reference_style > 0 && $selected_reference_style < 6)
+		&& ($selected_publication_type > 0 && $selected_publication_type < 8)
+		&& ($selected_reference_details > 0 && $selected_reference_details < 102)
+	) {
+
+		# Load template to display.
+		$style_part = filter_nasties($selected_reference_style, 'filename_no_extension', '');
+		$type_part = filter_nasties($selected_publication_type, 'filename_no_extension', '');;
+		$details_part = filter_nasties($selected_reference_details, 'filename_no_extension', '');
+
+		$style_path = isset($citation_directory_names[$style_part])
+					? $citation_directory_names[$style_part]
+					: false;
+		# Debug
+		#error_log(
+		#	'icite_display_citation_callback -> $selected_reference_details = '
+		#	. Dumper($selected_reference_details)
+		#);
+
+		# Debug
+		#error_log(
+		#	'icite_display_citation_callback -> $details_part = '
+		#	. Dumper($details_part)
+		#);
+
+		if ($style_path) {
+
+			$filename =
+				dirname(__FILE__)
+				. '/templates/'
+				. $style_path
+				. '/'
+				. $style_part . '_' . $type_part . '_' . $details_part . '_template.tmpl';
+
+			# Debug
+			#error_log(
+			#	'icite_display_citation_callback -> $filename = '
+			#	. Dumper($filename)
+			#);
+
+			$display = file_get_contents($filename);
+
+			# Debug
+			#error_log(
+			#	'icite_display_citation_callback -> $display = '
+			#	. Dumper($display)
+			#);
+
+			if (!$display) {
+
+				$display = 'Unable to load the requested Referencing Example.';
+
+			} else {
+
+				$header_reference_style = '';
+				$full_display_URL =
+					str_replace(
+						':',
+						'%3a',
+						$citation_base_URL
+					)
+					. '/full-display/'
+					. check_plain($style_part)
+					. '/'
+					. check_plain($type_part)
+					. '/'
+					. check_plain($details_part);
+
+				$style_display_URL =
+					str_replace(
+						':',
+						'%3a',
+						$citation_base_URL
+					)
+					. '/full-display/'
+					. check_plain($style_part);
+
+				if ($substitute_header) {
+
+					$header_reference_style =
+						check_plain($reference_style[$selected_reference_style])
+						. ' &#45; ';
+				}
+
+				$display = str_replace(
+					'%%ReferenceStyle%%',
+					$header_reference_style,
+					$display
+				);
+
+				$display = str_replace(
+					'%%ICitePopUpURL%%',
+					$base_path
+						. str_replace(
+							':',
+							'%3a',
+							$citation_base_URL
+						)
+						. '/popup',
+					$display
+				);
+
+				$display = str_replace('%%ICiteBasePath%%', $base_path, $display);
+
+				$display = str_replace(
+					'%%ICiteURL%%',
+					$base_path
+						. $style_display_URL,
+					$display
+				);
+
+				$style_footer = file_get_contents(
+					dirname(__FILE__)
+					. '/templates/' . $style_path . '/' . $style_path . '_footer.tmpl'
+				);
+
+				$style_footer = str_replace('%%ICiteBasePath%%', $base_path, $style_footer);
+
+				$footer = file_get_contents(
+					dirname(__FILE__)
+					. '/templates/cite_footer.tmpl'
+				);
+
+				$footer = str_replace(
+					'%%ICiteURL%%',
+					$base_url
+						. '/'
+						. $full_display_URL,
+					$footer
+				);
+
+				$display .= $style_footer . $footer;
+			}
+		}
+	}
+
+	return($display);
+}
+
+function _dummy_validator($form, &$form_state) {
+
+	return;
+}

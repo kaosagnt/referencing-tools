@@ -1,0 +1,5 @@
+name = "iCite"
+package = "Library Referencing Tools"
+description = "Referencing based upon Referen(C)ite from The University of Auckland NZ"
+core = "7.x"
+dependencies[] = "colorbox_node"
