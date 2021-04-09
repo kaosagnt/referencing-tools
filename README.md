@@ -27,3 +27,6 @@ data contained within the Referen&copy;e Cite software by the University of Auck
 
 Whilst what is presented here is a Drupal 7.x module, it could be easily converted in to a standard set of PHP code
 to live within any Library Website.
+
+ ![Example APA Citation](icite-screenshots/Screenshot_2021-04-09-ICite-Western-Sydney-University-Library-APA-book-example.png)
+ 
