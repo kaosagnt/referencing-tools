@@ -35,7 +35,7 @@ class CGI {
 		# NAME:*		__construct()
 		# DESCR:*		Create the CGI object class.
 		# USAGE:*		$CGI_object = new CGI();
-		# RETURNS:*		Returns reference the the created class.
+		# RETURNS:*		Returns reference to the created class.
 		# %END_PUBLIC%
 
 		# At present you can not pass a CGI object to fill set defaults.
